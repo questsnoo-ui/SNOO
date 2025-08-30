@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>$SNOO — Snoo's Side Quest (2D RPG)</title>
+<style>
+  :root{--navy:#0b1530;--navy2:#0a1226;--orange:#f2a43b;--gold:#f3a52f}
+  *{box-sizing:border-box} html,body{height:100%}
+  body{
+    margin:0;
+    background:linear-gradient(180deg,var(--navy),var(--navy2));
+    color:#f6f6f6;
+    font-family:ui-monospace,Menlo,Monaco,Consolas,"Courier New",monospace;
+    image-rendering:pixelated
+  }
+  .wrap{max-width:1100px;margin:0 auto;padding:22px 16px 80px}
+
+  header{position:relative;border:4px solid #000;border-radius:12px;overflow:hidden;background:#0f1f3e;
+         box-shadow:0 8px 0 #000,0 12px 0 #0005}
+  .hero{position:relative;height:360px}
+
+  #bg,#ground,#scan{position:absolute;inset:0;pointer-events:none}
+  #snooHero,#snooHeroReflect{
+    position:absolute;left:50%;bottom:35px;transform:translateX(-50%);
+    width:300px;height:300px;image-rendering:pixelated;filter:drop-shadow(0 8px 0 rgba(0,0,0,.35));
+    pointer-events:none
+  }
+  #snooHeroReflect{bottom:-105px;transform:translateX(-50%) scaleY(-1);opacity:.35;filter:blur(.2px)}
+  #scan{background:
+      radial-gradient(ellipse at center, rgba(0,0,0,0) 40%, rgba(0,0,0,.25) 90%),
+      repeating-linear-gradient(#0000,#0000 3px,rgba(255,255,255,.06) 4px);
+    mix-blend-mode:multiply}
+
+  .title{position:absolute;left:50%;top:16px;transform:translateX(-50%);background:rgba(0,0,0,.65);
+         padding:12px 16px;border:4px solid #000;color:#fff;text-align:center;border-radius:10px}
+  .title small{display:block;color:#ddd;margin-top:6px;font-size:12px}
+  .badge{position:absolute;top:10px;left:10px;background:#000;color:#fff;padding:6px 8px;border:4px solid #fff;box-shadow:0 4px 0 #000}
+
+  .hud{display:flex;gap:12px;align-items:center;justify-content:center;margin:14px 0}
+  .chip{background:#000;color:#fff;padding:8px 10px;border:4px solid #fff;box-shadow:0 4px 0 #000;border-radius:8px}
+  .bar{position:relative;min-width:220px;background:#000;border:4px solid #fff;border-radius:8px;overflow:hidden;box-shadow:0 4px 0 #000}
+  .bar .fill{height:18px;background:linear-gradient(90deg,#4ee,#6df);width:0%}
+  .bar .label{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#000;font-weight:700;text-shadow:0 1px 0 #fff}
+  .hearts{display:flex;gap:6px}.heart{width:18px;height:18px;background:#d33;border:3px solid #000;border-radius:4px}
+
+  main{display:grid;grid-template-columns:1.2fr 1fr;gap:18px;margin-top:16px}
+  @media (max-width:980px){main{grid-template-columns:1fr}}
+
+  .card,.panel{background:#0a1a33;border:4px solid #000;border-radius:12px;box-shadow:0 8px 0 #000;padding:12px}
+  .panel{position:relative;z-index:10}
+  .card h2{margin:6px 0 12px;text-align:center}
+  .art{border:4px solid #000;height:460px;display:flex;align-items:center;justify-content:center;background:#08142a;border-radius:8px}
+  .art canvas{max-width:95%;height:auto}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0}
+  .stat{background:#09162b;padding:8px;border:4px solid #000;border-radius:6px;text-align:center;position:relative;color:#ffd87a}
+  .stat b{display:block;font-size:12px}.stat .val{font-size:14px;color:#fff}
+  .stat .plus{position:absolute;right:6px;bottom:6px;background:var(--gold);border:4px solid #000;padding:2px 6px;cursor:pointer;color:#000}
+  .points{text-align:center;color:#ffd87a}
+
+  /* PIXEL PANEL + BUTTONS */
+  .panel::before{content:"";position:absolute;inset:6px;border:4px solid #fff;box-shadow:0 0 0 4px #000;pointer-events:none}
+  .panel::after{content:"";position:absolute;inset:0;background:
+      repeating-linear-gradient(0deg,transparent 0 3px,rgba(255,255,255,.03) 3px 4px),
+      repeating-linear-gradient(135deg,rgba(255,255,255,.02) 0 8px,rgba(255,255,255,0) 8px 16px);
+    mix-blend-mode:soft-light;pointer-events:none}
+
+  .btn{
+    --px:6px;display:inline-block;width:100%;color:#eaeaf2;background:#0e0e15;border:4px solid #000;border-radius:0;
+    padding:14px 18px;position:relative;image-rendering:pixelated;text-shadow:0 2px 0 rgba(0,0,0,.35);
+    box-shadow:0 0 0 4px #000,0 6px 0 #000;transition:filter .08s,transform .05s,box-shadow .05s;font-weight:600;text-decoration:none
+  }
+  .btn::before{content:"";position:absolute;inset:4px;border:4px solid #fff;box-shadow:inset 0 0 0 4px #000;pointer-events:none}
+  .btn::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(135deg,rgba(0,0,0,.14) 0 8px,rgba(0,0,0,0) 8px 16px);mix-blend-mode:multiply;pointer-events:none}
+  .btn:hover{filter:brightness(1.08)} .btn:active{transform:translateY(3px);box-shadow:0 0 0 4px #000,0 2px 0 #000}
+  .btn--dark{color:#fff;background:linear-gradient(#15151f,#0c0c14 50%,#0a0a12 50%),repeating-linear-gradient(135deg,#13131c 0 8px,#0f0f18 8px 16px)}
+  .btn[data-action="accept"]{color:#1a1200;background:linear-gradient(#ffc46f 0,#f2a43b 48%,#e4982c 52%,#d88925 100%),repeating-linear-gradient(45deg,rgba(0,0,0,.05) 0 10px,rgba(0,0,0,0) 10px 20px)}
+  .panel .btn + .btn{margin-top:14px}
+  .btn--pump{color:#001b10;background:linear-gradient(#78ffb0,#39d98a 48%,#1fb36c 52%,#159a5c 100%),repeating-linear-gradient(45deg,rgba(0,0,0,.05) 0 10px,rgba(0,0,0,0) 10px 20px)}
+  .btn--twitter{color:#fff;background:linear-gradient(#9ad1ff,#4aa9ff 48%,#2d8be6 52%,#1e6fbe 100%),repeating-linear-gradient(45deg,rgba(0,0,0,.05) 0 10px,rgba(0,0,0,0) 10px 20px)}
+
+  .log{background:#0a0f22;color:#efecff;border:4px solid #000;border-radius:8px;padding:10px;height:160px;overflow:auto;font-size:12px}
+  .dialog{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);width:min(680px,92%);background:#000;color:#fff;border:4px solid #fff;box-shadow:0 4px 0 #000;padding:10px;border-radius:8px;display:none}
+  .err{position:fixed;inset:auto 10px 10px 10px;background:#ff3b3b;color:#000;padding:8px 10px;border:4px solid #000;font-weight:700;display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="hero" id="hero">
+      <canvas id="bg"></canvas>
+      <canvas id="ground"></canvas>
+      <canvas id="snooHero" width="300" height="300"></canvas>
+      <canvas id="snooHeroReflect" width="300" height="300"></canvas>
+      <canvas id="scan"></canvas>
+      <div class="title"><div>$SNOO — Snoo's Side Quest</div><small>2D RPG • meme coin • no assets</small></div>
+      <div class="badge" id="lvlBadge">LV 1</div>
+      <div style="position:absolute;left:50%;bottom:100px;transform:translateX(-50%);display:flex;gap:12px;align-items:center;">
+        <div class="hearts" id="hearts"></div>
+        <div class="bar" style="width:260px"><div class="fill" id="xpFill"></div><div class="label">XP</div></div>
+      </div>
+      <div class="dialog" id="dialog"></div>
+    </div>
+    <div class="hud">
+      <div class="chip">$SNOO <span id="coins">0000</span></div>
+      <div class="chip">XP <span id="xp">0</span></div>
+      <div class="chip">Energy <span id="energy">5</span></div>
+    </div>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>Card Preview</h2>
+      <div class="art"><canvas id="cardCanvas" width="320" height="460"></canvas></div>
+      <div class="stats">
+        <div class="stat"><b>HP</b><div class="val" id="hp">87</div><button class="plus" data-stat="hp" type="button">+1</button></div>
+        <div class="stat"><b>NP</b><div class="val" id="np">32</div><button class="plus" data-stat="np" type="button">+1</button></div>
+        <div class="stat"><b>DEX</b><div class="val" id="dex">64</div><button class="plus" data-stat="dex" type="button">+1</button></div>
+        <div class="stat"><b>CHA</b><div class="val" id="cha">100</div><button class="plus" data-stat="cha" type="button">+1</button></div>
+      </div>
+      <div class="points">Unspent points: <span id="points">5</span></div>
+    </section>
+
+    <aside class="panel">
+      <button class="btn" data-action="accept" type="button">Press ^ to accept quest</button>
+      <button class="btn btn--dark" data-action="music"  type="button">♫ Music: OFF</button>
+      <button class="btn btn--dark" data-action="pack"   type="button">Open Quest Pack</button>
+      <button class="btn btn--dark" data-action="save"   type="button">Save Build</button>
+      <button class="btn btn--dark" data-action="reset"  type="button">Reset</button>
+      <a class="btn btn--pump" href="https://pump.fun/PUT-YOUR-TOKEN" target="_blank" rel="noopener">🚀 Pump.fun</a>
+      <a class="btn btn--twitter" href="https://twitter.com/YOUR_HANDLE" target="_blank" rel="noopener">𝕏 / Twitter</a>
+      <div class="log" id="log"></div>
+    </aside>
+  </main>
+</div>
+<div class="err" id="err"></div>
+
+<script>
+/* helpers */
+const $=id=>document.getElementById(id);const errBox=$('err');
+function showErr(e){errBox.style.display='block';errBox.textContent='Error: '+(e?.message||e);console.error(e)}
+function toast(msg){const t=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});$('log').innerHTML=`[${t}] ${msg}<br>`+$('log').innerHTML}
+function say(msg){const d=$('dialog');d.style.display='block';d.textContent=msg;toast(msg)}
+
+/* layout */
+const heroEl=$('hero'),bg=$('bg'),ground=$('ground'),hero=$('snooHero'),refl=$('snooHeroReflect'),card=$('cardCanvas');
+function fit(c){const r=heroEl.getBoundingClientRect();c.width=r.width;c.height=r.height}
+function resizeAll(){fit(bg);fit(ground)} resizeAll();addEventListener('resize',resizeAll)
+
+/* background */
+const bgctx=bg.getContext('2d'),grctx=ground.getContext('2d');let tSky=0;
+function drawCloud(ctx,x,y,s){ctx.save();ctx.fillStyle='rgba(255,255,255,0.12)';for(let i=0;i<5;i++){ctx.beginPath();ctx.arc(x+i*s*0.35,y+(i%2?4:-2),s*0.32,0,Math.PI*2);ctx.fill()}ctx.restore()}
+function drawBackground(dt){tSky+=(dt||16)*0.02;const W=bg.width,H=bg.height;bgctx.clearRect(0,0,W,H)
+  const g=bgctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#0f2a55');g.addColorStop(1,'#0b1833');bgctx.fillStyle=g;bgctx.fillRect(0,0,W,H)
+  function mountain(yBase,amp,speed,color){bgctx.fillStyle=color;bgctx.beginPath();bgctx.moveTo(0,H);for(let x=0;x<=W;x+=8){const y=H*0.55+yBase+Math.sin((x+tSky*speed)/120)*amp;bgctx.lineTo(x,y)}bgctx.lineTo(W,H);bgctx.closePath();bgctx.fill()}
+  mountain(-30,18,12,'#102a4a');mountain(10,24,18,'#0b2341')
+  for(let i=0;i<6;i++){const cx=((i*210+(tSky*25))%(W+260))-130;drawCloud(bgctx,cx,80+(i%2)*20,60+(i%3)*12)}
+  const GH=80;grctx.clearRect(0,0,W,H);grctx.fillStyle='#09162b';grctx.fillRect(0,H-GH,W,GH);grctx.fillStyle='#0c203e';for(let x=0;x<W;x+=32)grctx.fillRect(x+((tSky*20)%32),H-GH,28,6)
+}
+
+/* Snoo */
+function drawSnoo(ctx,level=1,size=240){
+  const base=100,off=document.createElement('canvas');off.width=off.height=size;
+  const s=off.getContext('2d');s.imageSmoothingEnabled=false;s.scale(size/base,size/base);
+  const ORANGE='#ffa223',BLACK='#101015',WHITE='#fffdf8',STEEL='#7b8796',GREEN='#1e5a49',GOLD='#f3a52f';
+  if(level>=2){const cx=50,cy=53,r=46;const grad=s.createRadialGradient(cx,cy,6,cx,cy,r);grad.addColorStop(0,level>=3?'rgba(255,210,80,0.85)':'rgba(170,210,255,0.85)');grad.addColorStop(1,'rgba(0,0,0,0)');s.fillStyle=grad;s.beginPath();s.arc(cx,cy,r,0,Math.PI*2);s.fill()}
+  s.fillStyle=WHITE;circle(50,53,27);s.strokeStyle=BLACK;s.lineWidth=3;circleStroke(50,53,29)
+  rect(34,30,32,8,STEEL);strokeRect(34,30,32,8,BLACK,3);rect(48,16,4,18,'#c03c48');flame(50,16,12)
+  rect(44,36,8,8,WHITE);strokeRect(44,36,8,8,BLACK,3)
+  rect(43,50,6,6,ORANGE);rect(55,50,6,6,ORANGE);rect(48,62,14,3,BLACK)
+  rect(26,74,48,20,GREEN);strokeRect(26,74,48,20,BLACK,4);rect(26,84,48,4,GOLD);rect(74,84,16,6,GOLD)
+  ctx.drawImage(off,(ctx.canvas.width-size)/2,(ctx.canvas.height-size)/2)
+  function rect(x,y,w,h,f){s.fillStyle=f;s.fillRect(x,y,w,h)}
+  function strokeRect(x,y,w,h,st,lw){s.save();s.strokeStyle=st;s.lineWidth=lw;s.strokeRect(x,y,w,h);s.restore()}
+  function circle(x,y,r){s.beginPath();s.arc(x,y,r,0,Math.PI*2);s.fill()}
+  function circleStroke(x,y,r){s.beginPath();s.arc(x,y,r,0,Math.PI*2);s.stroke()}
+  function flame(cx,top,r){s.save();s.fillStyle='#d5453e';s.beginPath();s.moveTo(cx,top);s.quadraticCurveTo(cx+r,top+r,cx,top+2*r);s.quadraticCurveTo(cx-r,top+r,cx,top);s.fill();
+    s.fillStyle='#ff7a2d';s.beginPath();s.moveTo(cx,top+3);s.quadraticCurveTo(cx+r*.7,top+r,cx,top+2*r-2);s.quadraticCurveTo(cx-r*.7,top+r,cx,top+3);s.fill();
+    s.fillStyle='#ffd24a';s.beginPath();s.moveTo(cx,top+6);s.quadraticCurveTo(cx+r*.4,top+r,cx,top+2*r-6);s.quadraticCurveTo(cx-r*.4,top+r,cx,top+6);s.fill();s.restore()}
+}
+
+/* Card (auto-fit stats) */
+function scribbleRect(ctx,x,y,w,h,color='#f2a43b',th=6,jit=2){
+  ctx.save();ctx.lineWidth=th;ctx.strokeStyle=color;ctx.lineJoin='round';
+  for(let p=0;p<2;p++){ctx.beginPath();ctx.moveTo(x+j(),y+j());ctx.lineTo(x+w+j(),y+j());ctx.lineTo(x+w+j(),y+h+j());ctx.lineTo(x+j(),y+h+j());ctx.closePath();ctx.stroke()}
+  ctx.restore();function j(){return (Math.random()*2-1)*jit}
+}
+function halftoneSky(ctx,x,y,w,h){
+  const g=ctx.createLinearGradient(0,y,0,y+h);g.addColorStop(0,'#cbe5ff');g.addColorStop(1,'#88bdf0');
+  ctx.fillStyle=g;ctx.fillRect(x,y,w,h);ctx.fillStyle='rgba(0,0,0,0.15)';
+  const s=6;for(let yy=y;yy<y+h;yy+=s){for(let xx=x+(yy%12?0:3);xx<x+w;xx+=s){ctx.fillRect(xx,yy,1,1)}}
+}
+function drawCard(){
+  const ctx=card.getContext('2d'),W=card.width,H=card.height;ctx.clearRect(0,0,W,H)
+  ctx.fillStyle='#0b1530';ctx.fillRect(0,0,W,H);scribbleRect(ctx,6,6,W-12,H-12,'#f2a43b',8,3)
+  scribbleRect(ctx,18,14,W-36,60,'#f2a43b',6,2);ctx.fillStyle='rgba(0,0,0,0.55)';ctx.fillRect(18,14,W-36,60)
+  ctx.fillStyle='#fff';ctx.font='bold 36px system-ui, Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('$SNOO',W/2,44)
+  const AX=22,AY=82,AW=W-44,AH=240;scribbleRect(ctx,AX,AY,AW,AH,'#f2a43b',6,2);halftoneSky(ctx,AX+6,AY+6,AW-12,AH-12)
+  const snoo=document.createElement('canvas');snoo.width=snoo.height=200;drawSnoo(snoo.getContext('2d'),state.level,200);ctx.drawImage(snoo,AX+AW/2-100,AY+AH/2-100)
+  const SX=22,SY=AY+AH+16,SW=W-44,SH=H-(SY+24);scribbleRect(ctx,SX,SY,SW,SH,'#f2a43b',6,2);ctx.fillStyle='#0b1530';ctx.fillRect(SX+4,SY+4,SW-8,SH-8)
+  const labels=['HP','NP','DEX','CHA'];const values=[state.stats.hp,state.stats.np,state.stats.dex,state.stats.cha]
+  const innerTop=SY+8,innerBottom=SY+SH-8,innerH=Math.max(1,innerBottom-innerTop),rows=labels.length,lineH=innerH/rows
+  const labelSize=Math.floor(Math.min(28,Math.max(14,lineH*0.50)));const valueSize=Math.floor(Math.min(32,Math.max(16,lineH*0.56)))
+  ctx.textBaseline='middle';ctx.textAlign='left';ctx.fillStyle='#ffd87a';ctx.font=`bold ${labelSize}px system-ui, Arial`;for(let i=0;i<rows;i++){const y=innerTop+(i+0.5)*lineH;ctx.fillText(labels[i],SX+18,y)}
+  ctx.textAlign='right';ctx.fillStyle='#fff';ctx.font=`bold ${valueSize}px system-ui, Arial`;for(let i=0;i<rows;i++){const y=innerTop+(i+0.5)*lineH;ctx.fillText(String(values[i]),SX+SW-18,y)}
+}
+
+/* ===== Leveling System (to 99) ===== */
+const MAX_LEVEL = 99;
+const XP_BASE = 25;  // XP needed from 1 -> 2
+const XP_STEP = 5;   // each level requires +5 more than the previous
+
+// Total XP required to reach a given level L (L>=1). Level 1 requires 0 total XP.
+function totalXPForLevel(L){
+  if (L<=1) return 0;
+  const n = L-1; // number of completed level-ups
+  // arithmetic series sum: n/2 * [2*XP_BASE + (n-1)*XP_STEP]
+  return Math.floor(n * (2*XP_BASE + (n-1)*XP_STEP) / 2);
+}
+
+// XP needed to go from current level L to L+1
+function xpToNextLevel(L){
+  if (L>=MAX_LEVEL) return Infinity;
+  return XP_BASE + (L-1)*XP_STEP;
+}
+
+/* State */
+const state={stats:{hp:87,np:32,dex:64,cha:100},points:5,coins:0,xp:0,energy:5,level:1};
+
+function HUD(){
+  $('coins').textContent=String(state.coins).padStart(4,'0');
+  $('xp').textContent=state.xp;
+  $('energy').textContent=state.energy;
+  updateXP();
+  hearts();
+}
+function STAT(){ $('hp').textContent=state.stats.hp; $('np').textContent=state.stats.np; $('dex').textContent=state.stats.dex; $('cha').textContent=state.stats.cha; $('points').textContent=state.points; }
+
+function updateXP(){
+  if (state.level >= MAX_LEVEL){
+    $('xpFill').style.width='100%';
+    return;
+  }
+  const prev = totalXPForLevel(state.level);
+  const next = totalXPForLevel(state.level+1);
+  const pct = Math.max(0, Math.min(1, (state.xp - prev) / Math.max(1, next - prev)));
+  $('xpFill').style.width = (pct*100)+'%';
+}
+
+function hearts(){
+  const n=Math.max(1,Math.round(state.stats.hp/20));
+  const box=$('hearts'); box.innerHTML='';
+  for(let i=0;i<n;i++){ const d=document.createElement('div'); d.className='heart'; box.appendChild(d); }
+}
+HUD(); STAT();
+
+/* Actions via delegation */
+document.addEventListener('click', (ev) => {
+  const el = ev.target.closest('[data-action], .plus'); if(!el) return;
+  try{
+    if(el.classList.contains('plus')){
+      if(state.points<=0) return say('No points left.');
+      state.stats[el.dataset.stat]++; state.points--; STAT(); drawCard(); return;
+    }
+    const act=el.getAttribute('data-action');
+    if(act==='accept'){
+      ensureMusic();
+      if(state.energy<=0) return say('Out of energy…');
+      state.energy--;
+      const crit=Math.random()<(state.stats.dex/300);
+      const base=10+Math.floor(state.stats.cha/25);
+      const gain=base*(crit?3:1);
+      state.coins+=gain; state.xp+=crit?8:3;
+      HUD(); checkLV();
+      say(`Quest complete! +${gain} $SNOO ${crit?'(CRIT!)':''}`);
+    }
+    if(act==='music'){ musicOn?stopSong():startSong(); el.textContent = musicOn?'♫ Music: ON':'♫ Music: OFF' }
+    if(act==='pack'){ state.energy=Math.min(5,state.energy+1); HUD(); say('Opened a pack: Energy +1') }
+    if(act==='save'){ localStorage.setItem('snooqRPG', JSON.stringify(state)); say('Saved.') }
+    if(act==='reset'){ localStorage.removeItem('snooqRPG'); location.reload() }
+  }catch(e){ showErr(e) }
+}, true);
+
+document.addEventListener('keydown', e => { if (e.key==='^' || e.key==='ArrowUp') document.querySelector('[data-action="accept"]').click(); });
+
+function checkLV(){
+  let leveled = false;
+  while (state.level < MAX_LEVEL && state.xp >= totalXPForLevel(state.level + 1)){
+    state.level++;
+    leveled = true;
+  }
+  if (leveled){
+    $('lvlBadge').textContent = 'LV ' + state.level + (state.level===MAX_LEVEL?'':'');
+    sfxLevel();
+    say(`LEVEL UP! Level ${state.level}.`);
+  }
+  updateXP();
+}
+
+/* Render loop */
+let last=performance.now();
+function frame(now){
+  const dt=now-last; last=now;
+  try{
+    drawBackground(dt);
+    const bob=Math.round(Math.sin(now/420)*4);
+    const h=hero.getContext('2d'); h.clearRect(0,0,hero.width,hero.height);
+    const off=document.createElement('canvas'); off.width=off.height=240; drawSnoo(off.getContext('2d'), state.level, 240);
+    h.save(); h.translate(0,bob); h.drawImage(off,(hero.width-240)/2,(hero.height-240)/2); h.restore();
+    const r=refl.getContext('2d'); r.clearRect(0,0,refl.width,refl.height);
+    r.save(); r.translate(0,refl.height); r.scale(1,-1); r.globalAlpha=.35; r.drawImage(off,(refl.width-240)/2,(refl.height-240)/2); r.restore();
+    drawCard();
+  }catch(e){ showErr(e) }
+  requestAnimationFrame(frame)
+}
+requestAnimationFrame(frame);
+
+/* Load/save */
+(()=>{ const s=localStorage.getItem('snooqRPG'); if(!s) return; try{ Object.assign(state, JSON.parse(s)); HUD(); STAT(); $('lvlBadge').textContent='LV '+state.level; say('Save loaded.') }catch(e){ showErr(e) }})();
+
+/* --------------- Audio (non-overlapping) --------------- */
+let AC=null, musicOn=false, songInterval=null, master=null;
+
+function ACtx(){
+  if(!AC) AC=new (window.AudioContext||window.webkitAudioContext)();
+  if(AC.state==='suspended') AC.resume();
+  return AC;
+}
+function masterGain(){
+  const ac=ACtx();
+  if(!master){ master=ac.createGain(); master.gain.value=0.9; master.connect(ac.destination); }
+  return master;
+}
+function hz(m){ return 440*Math.pow(2,(m-69)/12); }
+
+function blip(t,d,f,type='square',g=0.08){
+  const ac=ACtx(), o=ac.createOscillator(), gg=ac.createGain();
+  o.type=type; o.frequency.value=f;
+  gg.gain.setValueAtTime(0,t);
+  gg.gain.linearRampToValueAtTime(g,t+0.01);
+  gg.gain.exponentialRampToValueAtTime(0.0001,t+d);
+  o.connect(gg); gg.connect(masterGain());
+  o.start(t); o.stop(t+d+0.05);
+}
+
+function scheduleFourBars(startTime){
+  const ac=ACtx(), bpm=92, beat=60/bpm, root=50;
+  const prog=[[0,3,7],[-2,2,5],[3,7,10],[5,9,12]];
+  for(let b=0;b<4;b++){
+    const ch=prog[b];
+    for(let s=0;s<4;s++) blip(startTime+b*beat+s*(beat/2), beat*0.45, hz(root+ch[s%ch.length]+12),'triangle',0.08);
+    ch.forEach((off,i)=> blip(startTime+b*beat, 4*beat*0.95, hz(root+off), i%2?'sine':'square',0.03));
+    blip(startTime+b*beat, 0.08, hz(30),'sine',0.12);
+  }
+}
+
+function startSong(){
+  if(musicOn) return;
+  const ac=ACtx(); musicOn=true;
+  const m=masterGain();
+  m.gain.cancelScheduledValues(ac.currentTime);
+  m.gain.setTargetAtTime(0.9, ac.currentTime, 0.1);
+  const bpm=92, beat=60/bpm, periodMs=Math.round(4*beat*1000);
+  scheduleFourBars(ac.currentTime+0.05);
+  songInterval=setInterval(()=> scheduleFourBars(ac.currentTime+0.05), periodMs);
+}
+
+function stopSong(){
+  if(!musicOn) return;
+  musicOn=false;
+  if(songInterval){ clearInterval(songInterval); songInterval=null; }
+  if(master){ const ac=ACtx(); master.gain.cancelScheduledValues(ac.currentTime); master.gain.setTargetAtTime(0.0001, ac.currentTime, 0.05); }
+}
+
+function ensureMusic(){ if(!musicOn) startSong(); }
+
+/* small level-up sfx */
+function sfxLevel(){ const ac=ACtx(), t=ac.currentTime+0.01; [79,84,88].forEach((m,i)=>blip(t+i*0.08,0.18,hz(m),'triangle',0.09)); }
+</script>
+</body>
+</html>
